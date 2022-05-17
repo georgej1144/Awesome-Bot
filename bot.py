@@ -1,5 +1,6 @@
 import discord as disc
 from os import stat
+from os.path import exists
 import json
 
 bot = disc.Bot()
@@ -14,68 +15,77 @@ wordlist_template = {'words': []}
 
 def load_json(guild_id: int):
     # if file is empty, create and initialize before reading
-    if stat(f'{guild_id}_words.json').st_size == 0:
+    if not exists(f'{guild_id}_words.json') or stat(f'{guild_id}_words.json').st_size == 0:
         save_json(guild_id, wordlist_template)
 
     # return saved word list as dictionary
-    with open(f'{guild_id}_words.json', 'r') as file:
+    with open(f'{guild_id}_words.json', 'r+') as file:
         return json.load(file)
 
 def save_json(guild_id: int, new_dict: dict):
     # save provided dict to file
     with open(f'{guild_id}_words.json', 'w+') as file:
-        json.dump(new_dict)
+        json.dump(new_dict, file)
 
 @bot.event
 async def on_ready():   # idk some template shit
     print(f'We have logged in as {bot.user}')
 
+word_group = bot.create_group(name="words", description='A set of commands to add, remove, and list words', guild_ids=guilds)
 
-@bot.slash_command(guild_ids=guilds)
+@word_group.command(name="list", description="List the words (comma separated)")
 async def list_words(ctx):
-    gid = ctx.guild.id
+    gid = ctx.interaction.guild_id
     ret_str = ''
+    response = ''
     try:
         words = load_json(gid)
-        for word in words:
+        for word in words['words']:
             ret_str = f'{ret_str}, {word}'
-        await ctx.respond(ret_str[2:])
+        if ret_str == '':
+           response = f'The wordlist is empty, add words first to see them listed'
+        else:
+            response = ret_str[2:]
     except:
         print(f'Error loading words for guild {gid}')
-        await ctx.respond("Error loading words from file.")
+        response = "Error loading words from file."
+    await ctx.respond(response)
     
 
-@bot.slash_command(guild_ids=guilds)
+@word_group.command(name="add", description="Add a new word to the list")
 async def insert_word(ctx, arg):
-    gid = ctx.guild.id
+    gid = ctx.interaction.guild_id
+    response = ''
     try:
         words = load_json(gid)
         
         if arg in words['words']:   # check and handle duplicate entry
-            await ctx.respond(f'The word \'{arg}\' already exists in this server\'s wordlist')
+            response = f'The word \'{arg}\' already exists in this server\'s wordlist'
         else:   # non-duplicates
             words['words'].append(arg)
             save_json(gid, words)
-            await ctx.respond(f'The word \'{arg}\' has been added to your wordlist')
-
+            response = f'The word \'{arg}\' has been added to your wordlist'
     except:
         print(f'Error inserting word "{arg}" for guild {gid}')
-        await ctx.respond("Error inserting word.")
+        response = "Error inserting word."
+    await ctx.respond(response)
 
-@bot.slash_command(guild_ids=guilds)
+
+@word_group.command(name="remove", description="Remove a word from the list")
 async def remove_word(ctx, arg):
-    gid = ctx.guild.id
+    gid = ctx.interaction.guild_id
+    response = ''
     try:
         words = load_json(gid)
-
         if arg in words['words']:   # remove word if it exists in list
             words['words'].remove(arg)
             save_json(gid, words)
-            await ctx.respond(f'The word \'{arg}\' has been removed from your wordlist')
+            response = f'The word \'{arg}\' has been removed from your wordlist'
         else:   # word not in list
-            await ctx.respond(f'The word \'{arg}\' was not found in your wordlist')
+            response = f'The word \'{arg}\' was not found in your wordlist'
     except:
         print(f'Error removing word "{arg}" for guild {gid}')
-        await ctx.respond("Error removing word.")
+        response = "Error removing word."
+    await ctx.respond(response)
 
 bot.run(private_token)
