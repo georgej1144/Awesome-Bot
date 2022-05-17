@@ -8,7 +8,7 @@ bot = disc.Bot()
 guilds = []
 
 # Paste your Bot Token here
-private_token = None
+private_token = ''
 
 wordlist_template = {'words': []}
 
