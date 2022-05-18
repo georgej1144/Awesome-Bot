@@ -68,7 +68,7 @@ async def insert_word(ctx, arg):
                 await ctx.respond(f'The word \'{word}\' already exists in this server\'s wordlist')
             else:   # non-duplicates
                 words['words'].append(word)
-                await ctx.respond(f'The word \'{word}\' has been added to your wordlist')
+                await ctx.respond(f'The word has been added to your wordlist')
         save_json(gid, words)
 
     except:
