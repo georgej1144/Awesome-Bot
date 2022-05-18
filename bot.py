@@ -1,4 +1,3 @@
-from posixpath import split
 import discord as disc
 from os import stat
 from os.path import exists
