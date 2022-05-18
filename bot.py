@@ -1,3 +1,4 @@
+from posixpath import split
 import discord as disc
 from os import stat
 from os.path import exists
@@ -10,6 +11,8 @@ guilds = []
 
 # Paste your Bot Token here
 private_token = ''
+
+# Paste the ID of the role a user must have to 
 
 wordlist_template = {'words': []}
 
@@ -37,13 +40,12 @@ word_group = bot.create_group(name="words", description='A set of commands to ad
 async def list_words(ctx):
     gid = ctx.interaction.guild_id
     ret_str = ''
-    response = ''
     try:
         words = load_json(gid)
         for word in words['words']:
             ret_str = f'{ret_str}, {word}'
         if ret_str == '':
-           response = f'The wordlist is empty, add words first to see them listed'
+           await ctx.respond(f'The wordlist is empty, add words first to see them listed')
         else:
             with open(f'{gid}_list.txt', 'w+') as output:
                 output.write(ret_str[2:])
@@ -51,44 +53,53 @@ async def list_words(ctx):
             return
     except:
         print(f'Error loading words for guild {gid}')
-        response = "Error loading words from file."
-    await ctx.respond(response)
+        await ctx.respond("Error loading words from file.")
     
 
 @word_group.command(name="add", description="Add a new word to the list")
 async def insert_word(ctx, arg):
     gid = ctx.interaction.guild_id
-    response = ''
     try:
         words = load_json(gid)
+        split_input = arg.split(',')    # split by commas (if no commas result is list of size 1 containing word)
         
-        if arg in words['words']:   # check and handle duplicate entry
-            response = f'The word \'{arg}\' already exists in this server\'s wordlist'
-        else:   # non-duplicates
-            words['words'].append(arg)
+        split_input = [word.lower().strip() for word in split_input]    # lowercase and clean individual words
+
+        if len(split_input) == 1:   # if only 1 word added
+            arg = split_input[0]    # replace arg with cleaned arg
+            if arg in words['words']:   # check and handle duplicate entry
+                await ctx.respond(f'The word \'{arg}\' already exists in this server\'s wordlist')
+            else:   # non-duplicates
+                words['words'].append(arg)
+                save_json(gid, words)
+                await ctx.respond(f'The word \'{arg}\' has been added to your wordlist')
+        else:   # if multiple words added
+            for word in split_input:
+                if word in words['words']:
+                    await ctx.respond(f'The word \'{word}\' already exists in this server\'s wordlist')
+                else:
+                    words['words'].append(word)
+                    await ctx.respond(f'The word \'{word}\' has been added to your wordlist')
             save_json(gid, words)
-            response = f'The word \'{arg}\' has been added to your wordlist'
     except:
         print(f'Error inserting word "{arg}" for guild {gid}')
-        response = "Error inserting word."
-    await ctx.respond(response)
+        await ctx.respond("Error inserting word.")
 
 
 @word_group.command(name="remove", description="Remove a word from the list")
+@disc.default_permissions(manage_messages=True)
 async def remove_word(ctx, arg):
     gid = ctx.interaction.guild_id
-    response = ''
     try:
         words = load_json(gid)
         if arg in words['words']:   # remove word if it exists in list
             words['words'].remove(arg)
             save_json(gid, words)
-            response = f'The word \'{arg}\' has been removed from your wordlist'
+            await ctx.respond(f'The word \'{arg}\' has been removed from your wordlist')
         else:   # word not in list
-            response = f'The word \'{arg}\' was not found in your wordlist'
+            await ctx.respond(f'The word \'{arg}\' was not found in your wordlist')
     except:
         print(f'Error removing word "{arg}" for guild {gid}')
-        response = "Error removing word."
-    await ctx.respond(response)
+        await ctx.respond("Error removing word.")
 
 bot.run(private_token)
