@@ -21,4 +21,4 @@ Maintains a word list for each server the bot is added to. Each server's words a
 
 ## How to run
 - From within the repository, run `pip install -r requirements.txt`
-- Run with bot.py with Python 3.8 or higher
+- Run bot.py with Python 3.8 or higher
