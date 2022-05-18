@@ -1,3 +1,6 @@
+# Awesome Bot
+Maintains a word list for each server the bot is added to. Each server's words are stored in separate JSON files by Server ID.
+
 ## How to add
 - Create an application through the discord developer portal
 - Create a Bot user inside the application
