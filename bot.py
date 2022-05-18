@@ -2,6 +2,9 @@ import discord as disc
 from os import stat
 from os.path import exists
 import json
+import logging
+
+logging.basicConfig(filename="interactions.log", level=logging.INFO)
 
 bot = disc.Bot()
 
@@ -31,13 +34,14 @@ def save_json(guild_id: int, new_dict: dict):
 
 @bot.event
 async def on_ready():   # idk some template shit
-    print(f'We have logged in as {bot.user}')
+    print(f'Started successfully as {bot.user}')
 
 word_group = bot.create_group(name="words", description='A set of commands to add, remove, and list words', guild_ids=guilds)
 
 @word_group.command(name="list", description="List the words (comma separated)")
 async def list_words(ctx):
     gid = ctx.interaction.guild_id
+    logging.info(f'User {ctx.interaction.user.name} (id:{ctx.interaction.user.id}) listing words in guild \'{ctx.interaction.guild.name}\' (id: {gid})')
     ret_str = ''
     try:
         words = load_json(gid)
@@ -48,53 +52,67 @@ async def list_words(ctx):
         else:
             with open(f'{gid}_list.txt', 'w+') as output:
                 output.write(ret_str[2:])
-            await ctx.respond(f"Word count: { len(words['words']) }", file=disc.File(f'{gid}_list.txt'))
-            return
+            # await ctx.respond(f"Word count: { len(words['words']) }", file=disc.File(f'{gid}_list.txt'))
+            await ctx.respond(file=disc.File(f'{gid}_list.txt'))
     except:
-        print(f'Error loading words for guild {gid}')
+        logging.error(f'Error loading words. Invoked by {ctx.interaction.user.name} (id: {ctx.interaction.user.id}) in channel \'{ctx.interaction.channel.name}\' (id: {ctx.interaction.channel_id}) in guild \'{ctx.interaction.guild.name}\' (id: {gid}).')
         await ctx.respond("Error loading words from file.")
     
 
 @word_group.command(name="add", description="Add a new word to the list")
-async def insert_word(ctx, arg):
+async def insert_word(ctx, word):
     gid = ctx.interaction.guild_id
+    logging.info(f'User {ctx.interaction.user.name} (id:{ctx.interaction.user.id}) adding word(s) \'{word}\' in guild \'{ctx.interaction.guild.name}\' (id: {gid})')
     try:
         words = load_json(gid)
         
-        split_input = [word.lower().strip() for word in arg.split(',')]    # split by commas. lowercase and clean individual words
+        split_input = [to_insert.lower().strip() for to_insert in word.split(',')]    # split by commas. lowercase and clean individual words
 
-        for word in split_input:
-            if word in words['words']: # check and handle duplicate entry
-                await ctx.respond(f'The word \'{word}\' already exists in this server\'s wordlist')
+        for to_insert in split_input:
+            if to_insert in words['words']: # check and handle duplicate entry
+                await ctx.respond(f'The word \'{to_insert}\' already exists in this server\'s wordlist')
             else:   # non-duplicates
-                words['words'].append(word)
+                words['words'].append(to_insert)
                 await ctx.respond(f'The word has been added to your wordlist')
         save_json(gid, words)
 
     except:
-        print(f'Error inserting word "{arg}" for guild {gid}')
+        logging.error(f'Error inserting word(s). Invoked by {ctx.interaction.user.name} (id: {ctx.interaction.user.id}) in channel \'{ctx.interaction.channel.name}\' (id: {ctx.interaction.channel_id}) in guild \'{ctx.interaction.guild.name}\' (id: {gid}). Word(s): {word}')
         await ctx.respond("Error inserting word.")
+
+
+@word_group.command(name="count", description="See how many words are in the list")
+async def count_words(ctx):
+    gid = ctx.interaction.guild_id
+    logging.info(f'User {ctx.interaction.user.name} (id:{ctx.interaction.user.id}) getting word count in guild \'{ctx.interaction.guild.name}\' (id: {gid})')
+    try:
+        words = load_json(gid)
+        await ctx.respond(f"Word count: {len(words['words'])}")
+    except:
+        logging.error(f'Error getting word count. Invoked by {ctx.interaction.user.name} (id: {ctx.interaction.user.id}) in channel \'{ctx.interaction.channel.name}\' (id: {ctx.interaction.channel_id}) in guild \'{ctx.interaction.guild.name}\' (id: {gid}).')
+        await ctx.respond(f"Error getting word count.")
 
 
 @word_group.command(name="remove", description="Remove a word from the list")
 @disc.default_permissions(manage_messages=True)
-async def remove_word(ctx, arg):
+async def remove_word(ctx, word):
     gid = ctx.interaction.guild_id
+    logging.info(f'User {ctx.interaction.user.name} (id:{ctx.interaction.user.id}) removing word(s) \'{word}\' in guild \'{ctx.interaction.guild.name}\' (id: {gid})')
     try:
         words = load_json(gid)
         
-        split_input = [word.lower().strip() for word in arg.split(',')]
+        split_input = [to_remove.lower().strip() for to_remove in word.split(',')]
 
-        for word in split_input:
-            if word in words['words']:   # remove word if it exists in list
-                words['words'].remove(word)
-                await ctx.respond(f'The word \'{word}\' has been removed from your wordlist')
+        for to_remove in split_input:
+            if to_remove in words['words']:   # remove word if it exists in list
+                words['words'].remove(to_remove)
+                await ctx.respond(f'The word \'{to_remove}\' has been removed from your wordlist')
             else:   # word not in list
-                await ctx.respond(f'The word \'{word}\' was not found in your wordlist')
+                await ctx.respond(f'The word \'{to_remove}\' was not found in your wordlist')
         save_json(gid, words)
 
     except:
-        print(f'Error removing word "{arg}" for guild {gid}')
+        logging.error(f'Error removing word(s). Invoked by {ctx.interaction.user.name} (id: {ctx.interaction.user.id}) in channel \'{ctx.interaction.channel.name}\' (id: {ctx.interaction.channel_id}) in guild \'{ctx.interaction.guild.name}\' (id: {gid}). Word(s): {word}')
         await ctx.respond("Error removing word.")
 
 bot.run(private_token)
