@@ -45,7 +45,10 @@ async def list_words(ctx):
         if ret_str == '':
            response = f'The wordlist is empty, add words first to see them listed'
         else:
-            response = ret_str[2:]
+            with open(f'{gid}_list.txt', 'w+') as output:
+                output.write(ret_str[2:])
+            await ctx.respond(f"Word count: { len(words['words']) }", file=disc.File(f'{gid}_list.txt'))
+            return
     except:
         print(f'Error loading words for guild {gid}')
         response = "Error loading words from file."
