@@ -61,26 +61,17 @@ async def insert_word(ctx, arg):
     gid = ctx.interaction.guild_id
     try:
         words = load_json(gid)
-        split_input = arg.split(',')    # split by commas (if no commas result is list of size 1 containing word)
         
-        split_input = [word.lower().strip() for word in split_input]    # lowercase and clean individual words
+        split_input = [word.lower().strip() for word in arg.split(',')]    # split by commas. lowercase and clean individual words
 
-        if len(split_input) == 1:   # if only 1 word added
-            arg = split_input[0]    # replace arg with cleaned arg
-            if arg in words['words']:   # check and handle duplicate entry
-                await ctx.respond(f'The word \'{arg}\' already exists in this server\'s wordlist')
+        for word in split_input:
+            if word in words['words']: # check and handle duplicate entry
+                await ctx.respond(f'The word \'{word}\' already exists in this server\'s wordlist')
             else:   # non-duplicates
-                words['words'].append(arg)
-                save_json(gid, words)
-                await ctx.respond(f'The word \'{arg}\' has been added to your wordlist')
-        else:   # if multiple words added
-            for word in split_input:
-                if word in words['words']:
-                    await ctx.respond(f'The word \'{word}\' already exists in this server\'s wordlist')
-                else:
-                    words['words'].append(word)
-                    await ctx.respond(f'The word \'{word}\' has been added to your wordlist')
-            save_json(gid, words)
+                words['words'].append(word)
+                await ctx.respond(f'The word \'{word}\' has been added to your wordlist')
+        save_json(gid, words)
+
     except:
         print(f'Error inserting word "{arg}" for guild {gid}')
         await ctx.respond("Error inserting word.")
@@ -92,12 +83,17 @@ async def remove_word(ctx, arg):
     gid = ctx.interaction.guild_id
     try:
         words = load_json(gid)
-        if arg in words['words']:   # remove word if it exists in list
-            words['words'].remove(arg)
-            save_json(gid, words)
-            await ctx.respond(f'The word \'{arg}\' has been removed from your wordlist')
-        else:   # word not in list
-            await ctx.respond(f'The word \'{arg}\' was not found in your wordlist')
+        
+        split_input = [word.lower().strip() for word in arg.split(',')]
+
+        for word in split_input:
+            if word in words['words']:   # remove word if it exists in list
+                words['words'].remove(word)
+                await ctx.respond(f'The word \'{word}\' has been removed from your wordlist')
+            else:   # word not in list
+                await ctx.respond(f'The word \'{word}\' was not found in your wordlist')
+        save_json(gid, words)
+
     except:
         print(f'Error removing word "{arg}" for guild {gid}')
         await ctx.respond("Error removing word.")
