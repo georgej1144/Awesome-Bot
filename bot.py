@@ -32,6 +32,9 @@ def save_json(guild_id: int, new_dict: dict):
     with open(f'{guild_id}_words.json', 'w+') as file:
         json.dump(new_dict, file)
 
+def slice(arr, start, end):
+    return arr[:start] + arr[end:]
+
 @bot.event
 async def on_ready():   # idk some template shit
     print(f'Started successfully as {bot.user}')
@@ -110,9 +113,35 @@ async def remove_word(ctx, word):
             else:   # word not in list
                 await ctx.respond(f'The word \'{to_remove}\' was not found in your wordlist')
         save_json(gid, words)
-
     except:
         logging.error(f'Error removing word(s). Invoked by {ctx.interaction.user.name} (id: {ctx.interaction.user.id}) in channel \'{ctx.interaction.channel.name}\' (id: {ctx.interaction.channel_id}) in guild \'{ctx.interaction.guild.name}\' (id: {gid}). Word(s): {word}')
         await ctx.respond("Error removing word.")
+
+@word_group.command(name="find", description="Find the index of a word in the list")
+async def find_word(ctx, word):
+    gid = ctx.interaction.guild_id
+    logging.info(f'User {ctx.interaction.user.name} (id:{ctx.interaction.user.id}) finding word {word} in guild \'{ctx.interaction.guild.name}\' (id: {gid})')
+    try:
+        words = load_json(gid)
+        await ctx.respond(f"Word \'{word}\' found at index {words['words'].index(word)}")
+    except(ValueError):
+        await ctx.respond(f'Word \'{word}\' is not in the wordlist.')
+    except:
+        logging.error(f'Error finding word. Invoked by {ctx.interaction.user.name} (id: {ctx.interaction.user.id}) in channel \'{ctx.interaction.channel.name}\' (id: {ctx.interaction.channel_id}) in guild \'{ctx.interaction.guild.name}\' (id: {gid}).')
+        await ctx.respond("Error loading words from file.")
+
+@word_group.command(name="massdel", description="Delete all words between two given indeces")
+@disc.default_permissions(manage_messages=True)
+async def massdel(ctx, start_index, end_index):
+    gid = ctx.interaction.guild_id
+    logging.info(f'User {ctx.interaction.user.name} (id:{ctx.interaction.user.id}) mass deleting between {start_index} and {end_index} in guild \'{ctx.interaction.guild.name}\' (id: {gid})')
+    try:
+        words = load_json(gid)
+        save_json(gid, slice(words, start_index, end_index))
+        await ctx.respond(f'Words between \'{start_index}\' and \'{end_index}\' deleted. You better not have boofed it.')
+    except:
+        logging.error(f'Error on mass delete. Invoked by {ctx.interaction.user.name} (id: {ctx.interaction.user.id}) in channel \'{ctx.interaction.channel.name}\' (id: {ctx.interaction.channel_id}) in guild \'{ctx.interaction.guild.name}\' (id: {gid}).')
+        await ctx.respond(f'You boofed something. Check the list before trying this again.')
+
 
 bot.run(private_token)
